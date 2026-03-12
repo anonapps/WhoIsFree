@@ -68,6 +68,29 @@ export function formatTimeForDisplay(
   })
 }
 
+export function formatTimeRangeForDisplay(
+  startDate: Date | string,
+  durationMinutes: number,
+  timezone: string
+): string {
+  const start = typeof startDate === 'string' ? new Date(startDate) : startDate
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000)
+  
+  const startStr = formatTimeInTimezone(start, timezone, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+  
+  const endStr = formatTimeInTimezone(end, timezone, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+  
+  return `${startStr} - ${endStr}`
+}
+
 export function getTimezoneOffset(timezone: string): string {
   const now = new Date()
   const formatter = new Intl.DateTimeFormat('en-US', {

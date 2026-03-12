@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { COMMON_TIMEZONES, getUserTimezone, formatDateForDisplay, formatTimeForDisplay } from "@/lib/timezone"
+import { COMMON_TIMEZONES, getUserTimezone, formatDateForDisplay, formatTimeRangeForDisplay } from "@/lib/timezone"
 import type { Event, TimeSlot } from "@/lib/types"
 import { submitVotes } from "./actions"
 
@@ -258,7 +258,7 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
                           ${voteState === 'preferred' ? 'border-primary bg-primary text-primary-foreground' : ''}
                         `}
                       >
-                        <div>{formatTimeForDisplay(slot.start_time, timezone)}</div>
+                        <div>{formatTimeRangeForDisplay(slot.start_time, event.duration, timezone)}</div>
                         <div className="text-xs mt-1 opacity-70">
                           {voteState === 'none' && 'Click to select'}
                           {voteState === 'yes' && 'Available'}
