@@ -64,15 +64,6 @@ export function TimeSlotSelector({
     return selectedSlots.some(s => s.getTime() === slot.getTime())
   }, [selectedSlots])
 
-  const toggleSlot = useCallback((slot: Date) => {
-    const isSelected = isSlotSelected(slot)
-    if (isSelected) {
-      onSlotsChange(selectedSlots.filter(s => s.getTime() !== slot.getTime()))
-    } else {
-      onSlotsChange([...selectedSlots, slot])
-    }
-  }, [selectedSlots, onSlotsChange, isSlotSelected])
-
   const getSlotKey = (day: Date, timeSlot: Date): string => {
     const slotDate = new Date(day)
     slotDate.setHours(timeSlot.getHours(), timeSlot.getMinutes(), 0, 0)
@@ -83,14 +74,16 @@ export function TimeSlotSelector({
     return new Date(key)
   }
 
-  const handleMouseDown = (day: Date, timeSlot: Date) => {
+  const handleMouseDown = (day: Date, timeSlot: Date, e: React.MouseEvent) => {
+    e.preventDefault()
     const slotDate = new Date(day)
     slotDate.setHours(timeSlot.getHours(), timeSlot.getMinutes(), 0, 0)
+    const key = getSlotKey(day, timeSlot)
     
     const isSelected = isSlotSelected(slotDate)
     setDragMode(isSelected ? 'deselect' : 'select')
     setIsDragging(true)
-    setDraggedSlots(new Set([getSlotKey(day, timeSlot)]))
+    setDraggedSlots(new Set([key]))
   }
 
   const handleMouseEnter = (day: Date, timeSlot: Date) => {
@@ -99,8 +92,8 @@ export function TimeSlotSelector({
     setDraggedSlots(prev => new Set([...prev, key]))
   }
 
-  const handleMouseUp = useCallback(() => {
-    if (!isDragging) return
+  const applyDraggedSlots = useCallback(() => {
+    if (draggedSlots.size === 0) return
     
     const slotsToToggle = Array.from(draggedSlots).map(getSlotFromKey)
     
@@ -111,16 +104,26 @@ export function TimeSlotSelector({
       const keysToRemove = new Set(draggedSlots)
       onSlotsChange(selectedSlots.filter(s => !keysToRemove.has(s.toISOString())))
     }
+  }, [draggedSlots, dragMode, isSlotSelected, selectedSlots, onSlotsChange])
+
+  const handleMouseUp = useCallback(() => {
+    if (!isDragging) return
+    
+    applyDraggedSlots()
     
     setIsDragging(false)
     setDraggedSlots(new Set())
-  }, [isDragging, draggedSlots, dragMode, isSlotSelected, selectedSlots, onSlotsChange])
+  }, [isDragging, applyDraggedSlots])
 
   useEffect(() => {
-    const handleGlobalMouseUp = () => handleMouseUp()
+    const handleGlobalMouseUp = () => {
+      if (isDragging) {
+        handleMouseUp()
+      }
+    }
     window.addEventListener('mouseup', handleGlobalMouseUp)
     return () => window.removeEventListener('mouseup', handleGlobalMouseUp)
-  }, [handleMouseUp])
+  }, [isDragging, handleMouseUp])
 
   const getSlotStatus = (day: Date, timeSlot: Date): 'selected' | 'dragging' | 'none' => {
     const slotDate = new Date(day)
@@ -216,15 +219,8 @@ export function TimeSlotSelector({
                       ${status === 'dragging' && dragMode === 'deselect' ? 'bg-destructive/30' : ''}
                       ${status === 'none' && !isPast ? 'hover:bg-primary/20' : ''}
                     `}
-                    onMouseDown={() => !isPast && handleMouseDown(day, timeSlot)}
+                    onMouseDown={(e) => !isPast && handleMouseDown(day, timeSlot, e)}
                     onMouseEnter={() => !isPast && handleMouseEnter(day, timeSlot)}
-                    onClick={() => {
-                      if (!isPast && !isDragging) {
-                        const slotDate = new Date(day)
-                        slotDate.setHours(timeSlot.getHours(), timeSlot.getMinutes(), 0, 0)
-                        toggleSlot(slotDate)
-                      }
-                    }}
                   />
                 )
               })}
