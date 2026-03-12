@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Calendar, Users, Clock, Info, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -28,11 +28,18 @@ type VoteState = 'none' | 'yes' | 'preferred'
 
 export function ParticipantView({ event, timeSlots, participantCount }: ParticipantViewProps) {
   const [name, setName] = useState("")
-  const [timezone, setTimezone] = useState(() => getUserTimezone())
+  const [timezone, setTimezone] = useState("UTC")
+  const [isHydrated, setIsHydrated] = useState(false)
   const [votes, setVotes] = useState<Record<string, VoteState>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Set timezone after hydration to avoid mismatch
+  useEffect(() => {
+    setTimezone(getUserTimezone())
+    setIsHydrated(true)
+  }, [])
 
   // Group time slots by date
   const slotsByDate = timeSlots.reduce((acc, slot) => {
@@ -237,7 +244,7 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
             <div className="flex items-start gap-2 p-3 bg-muted rounded-lg text-sm">
               <Info className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
               <p className="text-muted-foreground">
-                Times are shown in your timezone ({timezone}).
+                Times are shown in your timezone{isHydrated ? ` (${timezone})` : ""}.
               </p>
             </div>
 
