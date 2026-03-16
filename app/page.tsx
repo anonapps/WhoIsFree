@@ -10,7 +10,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Calendar className="h-6 w-6 text-primary" />
-            <span className="font-semibold text-lg">MeetSync</span>
+            <span className="font-semibold text-lg">WhoIsFree</span>
           </Link>
           <Button asChild>
             <Link href="/create">
@@ -89,7 +89,7 @@ export default function LandingPage() {
         <section className="py-16">
           <div className="max-w-5xl mx-auto px-4">
             <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">
-              Why MeetSync?
+              Why WhoIsFree?
             </h2>
             <div className="grid sm:grid-cols-2 gap-6">
               <div className="flex gap-4 p-4 rounded-lg border border-border bg-card">
@@ -154,7 +154,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-border bg-card py-8">
         <div className="max-w-5xl mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>MeetSync - Free group scheduling tool. No account required.</p>
+          <p>WhoIsFree - Free group scheduling tool. No account required.</p>
         </div>
       </footer>
     </div>

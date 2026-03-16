@@ -137,7 +137,7 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
           <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
               <Calendar className="h-6 w-6 text-primary" />
-              <span className="font-semibold text-lg">MeetSync</span>
+              <span className="font-semibold text-lg">WhoIsFree</span>
             </Link>
           </div>
         </header>
@@ -165,7 +165,7 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Calendar className="h-6 w-6 text-primary" />
-            <span className="font-semibold text-lg">MeetSync</span>
+            <span className="font-semibold text-lg">WhoIsFree</span>
           </Link>
         </div>
       </header>

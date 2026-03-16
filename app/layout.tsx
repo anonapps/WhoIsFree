@@ -7,7 +7,7 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'MeetSync - Free Group Scheduling Tool',
+  title: 'WhoIsFree - Free Group Scheduling Tool',
   description: 'Find the perfect meeting time for your group. No sign-up required. Just create, share, and coordinate.',
   generator: 'v0.app',
   icons: {
