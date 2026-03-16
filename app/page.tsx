@@ -150,13 +150,6 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-border bg-card py-8">
-        <div className="max-w-5xl mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>WhoIsFree - Free group scheduling tool. No account required.</p>
-        </div>
-      </footer>
     </div>
   )
 }

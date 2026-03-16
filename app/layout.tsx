@@ -1,10 +1,7 @@
+import Link from 'next/link'
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
-
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: 'WhoIsFree - Free Group Scheduling Tool',
@@ -37,7 +34,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased">
-        {children}
+        <div className="min-h-screen flex flex-col">
+          <div className="flex-1">{children}</div>
+          <footer className="border-t border-border bg-card">
+            <div className="max-w-5xl mx-auto px-4 py-3 text-sm text-muted-foreground text-center">
+              <Link href="/anonymity-faq" className="hover:text-foreground underline underline-offset-4">
+                ANONYMITY FAQ
+              </Link>
+            </div>
+          </footer>
+        </div>
         <Analytics />
       </body>
     </html>

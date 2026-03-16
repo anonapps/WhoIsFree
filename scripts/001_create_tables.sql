@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS events (
   duration INTEGER NOT NULL DEFAULT 60,
   timezone TEXT NOT NULL DEFAULT 'UTC',
   voting_deadline_days INTEGER NOT NULL DEFAULT 3,
-  admin_id UUID NOT NULL DEFAULT gen_random_uuid(),
+  admin_id TEXT NOT NULL DEFAULT encode(gen_random_bytes(32), 'hex'),
   is_closed BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   expires_at TIMESTAMPTZ
