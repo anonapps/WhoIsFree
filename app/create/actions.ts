@@ -51,20 +51,33 @@ export async function createEvent(input: CreateEventInput) {
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + 14)
 
-  const { data: event, error: eventError } = await supabase
+  const adminToken = generateAdminToken()
+  const baseEventPayload = {
+    title: input.title,
+    description: input.description,
+    instructions: input.instructions,
+    duration: input.duration,
+    timezone: input.timezone,
+    voting_deadline_days: input.votingDeadlineDays,
+    admin_id: adminToken,
+  }
+
+  let { data: event, error: eventError } = await supabase
     .from("events")
     .insert({
-      title: input.title,
-      description: input.description,
-      instructions: input.instructions,
-      duration: input.duration,
-      timezone: input.timezone,
-      voting_deadline_days: input.votingDeadlineDays,
-      admin_id: generateAdminToken(),
+      ...baseEventPayload,
       expires_at: expiresAt.toISOString(),
     })
     .select()
     .single()
+
+  if (eventError?.message?.includes("expires_at")) {
+    ;({ data: event, error: eventError } = await supabase
+      .from("events")
+      .insert(baseEventPayload)
+      .select()
+      .single())
+  }
 
   if (eventError || !event) {
     console.error("Error creating event:", eventError)
