@@ -29,9 +29,8 @@ export async function submitVotes(input: SubmitVotesInput) {
   await purgeExpiredEvents()
 
   const requesterIp = await getRequesterIp()
-  const normalizedName = input.name.trim().toLowerCase()
   const rateLimit = checkRateLimit({
-    key: `submit-votes:${input.eventId}:${requesterIp}:${normalizedName}`,
+    key: `submit-votes:${input.eventId}:${requesterIp}`,
     limit: SUBMIT_VOTES_LIMIT,
     windowMs: SUBMIT_VOTES_WINDOW_MS,
   })

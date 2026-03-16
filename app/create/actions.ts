@@ -1,7 +1,7 @@
 "use server"
 
 import { headers } from "next/headers"
-import { randomBytes } from "crypto"
+import { randomBytes, randomUUID } from "crypto"
 import { purgeExpiredEvents } from "@/lib/events/maintenance"
 import { checkRateLimit } from "@/lib/security/rate-limit"
 import { createClient } from "@/lib/supabase/server"
@@ -51,20 +51,43 @@ export async function createEvent(input: CreateEventInput) {
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + 14)
 
-  const { data: event, error: eventError } = await supabase
-    .from("events")
-    .insert({
-      title: input.title,
-      description: input.description,
-      instructions: input.instructions,
-      duration: input.duration,
-      timezone: input.timezone,
-      voting_deadline_days: input.votingDeadlineDays,
-      admin_id: generateAdminToken(),
-      expires_at: expiresAt.toISOString(),
-    })
-    .select()
-    .single()
+  const eventBasePayload = {
+    title: input.title,
+    description: input.description,
+    instructions: input.instructions,
+    duration: input.duration,
+    timezone: input.timezone,
+    voting_deadline_days: input.votingDeadlineDays,
+  }
+
+  const insertEvent = async (adminId: string, includeExpiresAt: boolean) => {
+    const payload = includeExpiresAt
+      ? { ...eventBasePayload, admin_id: adminId, expires_at: expiresAt.toISOString() }
+      : { ...eventBasePayload, admin_id: adminId }
+
+    return supabase.from("events").insert(payload).select().single()
+  }
+
+  const attempts: Array<{ adminId: string; includeExpiresAt: boolean }> = [
+    { adminId: generateAdminToken(), includeExpiresAt: true },
+    { adminId: generateAdminToken(), includeExpiresAt: false },
+    { adminId: randomUUID(), includeExpiresAt: true },
+    { adminId: randomUUID(), includeExpiresAt: false },
+  ]
+
+  let event: { id: string; admin_id: string } | null = null
+  let eventError: { code?: string; message?: string } | null = null
+
+  for (const attempt of attempts) {
+    const response = await insertEvent(attempt.adminId, attempt.includeExpiresAt)
+    event = response.data
+    eventError = response.error
+
+    if (!eventError && event) {
+      break
+    }
+
+  }
 
   if (eventError || !event) {
     console.error("Error creating event:", eventError)
