@@ -1,5 +1,6 @@
 import Link from "next/link"
 import type { Metadata } from 'next'
+import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -40,13 +41,10 @@ export default function RootLayout({
               <Link href="/anonymity-faq" className="hover:text-foreground underline underline-offset-4">
                 ANONYMITY FAQ
               </Link>
-              <span className="mx-2">|</span>
-              <Link href="/stats" className="hover:text-foreground underline underline-offset-4">
-                Stats
-              </Link>
             </div>
           </footer>
         </div>
+        <Analytics />
       </body>
     </html>
   )

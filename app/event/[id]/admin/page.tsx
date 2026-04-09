@@ -29,19 +29,6 @@ export default async function AdminPage({ params, searchParams }: AdminPageProps
     notFound()
   }
 
-  const now = Date.now()
-  const deletionTime = event.deletion_time ?? event.expires_at
-  if (deletionTime && new Date(deletionTime).getTime() <= now) {
-    await supabase.from("events").delete().eq("id", id)
-    redirect("/")
-  }
-
-  const votingDeadline =
-    event.voting_deadline ??
-    new Date(
-      new Date(event.created_at).getTime() + event.voting_deadline_days * 24 * 60 * 60 * 1000,
-    ).toISOString()
-
   // Fetch time slots with responses
   const { data: timeSlots } = await supabase
     .from('time_slots')
@@ -89,11 +76,7 @@ export default async function AdminPage({ params, searchParams }: AdminPageProps
 
   return (
     <AdminDashboard
-      event={{
-        ...event,
-        voting_deadline: votingDeadline,
-        deletion_time: deletionTime,
-      }}
+      event={event}
       timeSlots={timeSlotsWithResponses}
       participants={participants || []}
       adminKey={key}
