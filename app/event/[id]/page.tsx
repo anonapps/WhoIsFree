@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { ParticipantView } from "./participant-view"
 
 interface EventPageProps {
@@ -21,18 +21,13 @@ export default async function EventPage({ params }: EventPageProps) {
     notFound()
   }
 
-  // Check if event is expired
-  if (event.expires_at && new Date(event.expires_at) < new Date()) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Event Expired</h1>
-          <p className="text-muted-foreground">
-            This event is no longer accepting responses.
-          </p>
-        </div>
-      </div>
-    )
+  const now = Date.now()
+  const deletionTime = event.deletion_time ?? event.expires_at
+
+  // Hard-delete and redirect when deletion window is reached
+  if (deletionTime && new Date(deletionTime).getTime() <= now) {
+    await supabase.from("events").delete().eq("id", id)
+    redirect("/")
   }
 
   // Fetch time slots
