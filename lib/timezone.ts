@@ -34,14 +34,25 @@ export function getUserTimezone(): string {
   }
 }
 
+function isValidTimezone(tz: string): boolean {
+  if (!tz || typeof tz !== 'string') return false
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz })
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function formatTimeInTimezone(
   date: Date | string,
   timezone: string,
   options?: Intl.DateTimeFormatOptions
 ): string {
   const d = typeof date === 'string' ? new Date(date) : date
+  const safeTimezone = isValidTimezone(timezone) ? timezone : 'UTC'
   return d.toLocaleString('en-US', {
-    timeZone: timezone,
+    timeZone: safeTimezone,
     ...options,
   })
 }
@@ -92,9 +103,10 @@ export function formatTimeRangeForDisplay(
 }
 
 export function getTimezoneOffset(timezone: string): string {
+  const safeTimezone = isValidTimezone(timezone) ? timezone : 'UTC'
   const now = new Date()
   const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
+    timeZone: safeTimezone,
     timeZoneName: 'shortOffset',
   })
   const parts = formatter.formatToParts(now)
