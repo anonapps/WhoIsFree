@@ -3,6 +3,7 @@
 import { headers } from "next/headers"
 import { randomBytes } from "crypto"
 import { purgeExpiredEvents } from "@/lib/events/maintenance"
+import { incrementTotalEvents } from "@/lib/events/stats"
 import { checkRateLimit } from "@/lib/security/rate-limit"
 import { createClient } from "@/lib/supabase/server"
 
@@ -14,6 +15,11 @@ interface CreateEventInput {
   timezone: string
   votingDeadlineDays: number
   timeSlots: string[]
+}
+
+type DatabaseErrorLike = {
+  code?: string
+  message?: string
 }
 
 const CREATE_EVENT_LIMIT = 10
@@ -32,6 +38,17 @@ const getRequesterIp = async () => {
 
 const generateAdminToken = () => randomBytes(32).toString("hex")
 
+const isMissingColumnError = (error: DatabaseErrorLike | null) => {
+  if (!error) return false
+  const message = error.message?.toLowerCase() ?? ""
+  return (
+    error.code === "42703" ||
+    error.code === "PGRST204" ||
+    (message.includes("column") && message.includes("does not exist")) ||
+    (message.includes("schema cache") && message.includes("column"))
+  )
+}
+
 export async function createEvent(input: CreateEventInput) {
   await purgeExpiredEvents()
 
@@ -48,23 +65,43 @@ export async function createEvent(input: CreateEventInput) {
 
   const supabase = await createClient()
 
-  const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + 14)
+  const now = new Date()
+  const votingDeadline = new Date(now)
+  votingDeadline.setDate(votingDeadline.getDate() + input.votingDeadlineDays)
 
-  const { data: event, error: eventError } = await supabase
+  const deletionTime = new Date(now)
+  deletionTime.setDate(deletionTime.getDate() + 14)
+
+  const eventInsertPayload = {
+    title: input.title,
+    description: input.description,
+    instructions: input.instructions,
+    duration: input.duration,
+    timezone: input.timezone,
+    voting_deadline_days: input.votingDeadlineDays,
+    voting_deadline: votingDeadline.toISOString(),
+    deletion_time: deletionTime.toISOString(),
+    admin_id: generateAdminToken(),
+    expires_at: deletionTime.toISOString(),
+  }
+
+  let { data: event, error: eventError } = await supabase
     .from("events")
-    .insert({
-      title: input.title,
-      description: input.description,
-      instructions: input.instructions,
-      duration: input.duration,
-      timezone: input.timezone,
-      voting_deadline_days: input.votingDeadlineDays,
-      admin_id: generateAdminToken(),
-      expires_at: expiresAt.toISOString(),
-    })
+    .insert(eventInsertPayload)
     .select()
     .single()
+
+  // Backward compatibility for environments where new columns are not migrated yet.
+  // Also retry on unexpected select/insert errors to avoid hard-failing creation during schema drift.
+  if (eventError) {
+    if (!isMissingColumnError(eventError)) {
+      console.warn("Primary event insert failed, retrying with legacy payload:", eventError)
+    }
+    const { voting_deadline: _votingDeadline, deletion_time: _deletionTime, ...legacyPayload } = eventInsertPayload
+    const fallbackResult = await supabase.from("events").insert(legacyPayload).select().single()
+    event = fallbackResult.data
+    eventError = fallbackResult.error
+  }
 
   if (eventError || !event) {
     console.error("Error creating event:", eventError)
@@ -83,6 +120,8 @@ export async function createEvent(input: CreateEventInput) {
     await supabase.from("events").delete().eq("id", event.id)
     return { error: "Failed to create time slots" }
   }
+
+  await incrementTotalEvents()
 
   return {
     eventId: event.id,

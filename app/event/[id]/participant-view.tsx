@@ -171,6 +171,10 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-8">
+        <form
+          autoComplete="off"
+          onSubmit={(e) => e.preventDefault()}
+        >
         {/* Event Info */}
         <Card className="mb-6">
           <CardHeader>
@@ -209,9 +213,15 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
               <Label htmlFor="name">Your Name *</Label>
               <Input
                 id="name"
+                name="participant_input"
+                type="text"
                 placeholder="Enter your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
             </div>
             <div className="space-y-2">
@@ -257,6 +267,7 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
                     return (
                       <button
                         key={slot.id}
+                        type="button"
                         onClick={() => cycleVote(slot.id)}
                         className={`
                           p-3 rounded-lg border text-sm font-medium transition-all
@@ -305,6 +316,7 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
 
         <div className="flex flex-col sm:flex-row gap-3">
           <Button
+            type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}
             className="flex-1"
@@ -312,6 +324,7 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
             {isSubmitting ? "Submitting..." : "Submit Availability"}
           </Button>
           <Button
+            type="button"
             variant="outline"
             onClick={handleNoneWork}
             disabled={isSubmitting}
@@ -319,6 +332,7 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
             None of These Work
           </Button>
         </div>
+        </form>
       </main>
     </div>
   )
