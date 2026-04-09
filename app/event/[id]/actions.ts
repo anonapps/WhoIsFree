@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers"
 import { purgeExpiredEvents } from "@/lib/events/maintenance"
+import { incrementTotalParticipants } from "@/lib/events/stats"
 import { checkRateLimit } from "@/lib/security/rate-limit"
 import { createClient } from "@/lib/supabase/server"
 
@@ -9,6 +10,11 @@ interface SubmitVotesInput {
   eventId: string
   name: string
   votes: { slotId: string; voteType: "yes" | "preferred" }[]
+}
+
+type DatabaseErrorLike = {
+  code?: string
+  message?: string
 }
 
 const SUBMIT_VOTES_LIMIT = 20
@@ -23,6 +29,11 @@ const getRequesterIp = async () => {
   }
 
   return headerStore.get("x-real-ip") ?? "unknown"
+}
+
+const isMissingColumnError = (error: DatabaseErrorLike | null) => {
+  if (!error) return false
+  return error.code === "42703" || (error.message?.includes("column") && error.message?.includes("does not exist"))
 }
 
 export async function submitVotes(input: SubmitVotesInput) {
@@ -41,6 +52,38 @@ export async function submitVotes(input: SubmitVotesInput) {
   }
 
   const supabase = await createClient()
+  let { data: event, error: eventError } = await supabase
+    .from("events")
+    .select("id,voting_deadline,deletion_time,expires_at")
+    .eq("id", input.eventId)
+    .single()
+
+  // Backward compatibility for environments where new columns are not migrated yet.
+  if (isMissingColumnError(eventError)) {
+    const fallbackResult = await supabase
+      .from("events")
+      .select("id,expires_at")
+      .eq("id", input.eventId)
+      .single()
+
+    event = fallbackResult.data
+    eventError = fallbackResult.error
+  }
+
+  if (eventError || !event) {
+    return { error: "This event is no longer available." }
+  }
+
+  const deletionTime = event.deletion_time ?? event.expires_at
+
+  if (deletionTime && new Date(deletionTime).getTime() <= Date.now()) {
+    await supabase.from("events").delete().eq("id", input.eventId)
+    return { error: "This event is no longer available." }
+  }
+
+  if (event.voting_deadline && new Date(event.voting_deadline).getTime() <= Date.now()) {
+    return { error: "Voting is closed for this event." }
+  }
 
   const { data: participant, error: participantError } = await supabase
     .from("participants")
@@ -71,6 +114,8 @@ export async function submitVotes(input: SubmitVotesInput) {
       return { error: "Failed to submit votes" }
     }
   }
+
+  await incrementTotalParticipants()
 
   return { success: true }
 }

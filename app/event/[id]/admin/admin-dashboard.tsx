@@ -4,6 +4,7 @@ import { useState, useMemo } from "react"
 import Link from "next/link"
 import { Calendar, Users, Clock, Copy, Check, RefreshCw, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { AdminCountdownBanner } from "@/components/admin-countdown-banner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
@@ -99,6 +100,13 @@ export function AdminDashboard({ event, timeSlots, participants, adminKey }: Adm
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8">
+        {event.voting_deadline && event.deletion_time && (
+          <AdminCountdownBanner
+            votingDeadline={event.voting_deadline}
+            deletionTime={event.deletion_time}
+          />
+        )}
+
         {/* Event Info */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold mb-2">{event.title}</h1>
