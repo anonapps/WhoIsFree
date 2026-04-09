@@ -267,6 +267,7 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
                     return (
                       <button
                         key={slot.id}
+                        type="button"
                         onClick={() => cycleVote(slot.id)}
                         className={`
                           p-3 rounded-lg border text-sm font-medium transition-all
@@ -315,6 +316,7 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
 
         <div className="flex flex-col sm:flex-row gap-3">
           <Button
+            type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}
             className="flex-1"
@@ -322,6 +324,7 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
             {isSubmitting ? "Submitting..." : "Submit Availability"}
           </Button>
           <Button
+            type="button"
             variant="outline"
             onClick={handleNoneWork}
             disabled={isSubmitting}

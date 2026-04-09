@@ -26,9 +26,23 @@ export const COMMON_TIMEZONES = [
   { value: 'UTC', label: 'UTC' },
 ]
 
+export function isValidTimezone(timezone: string | null | undefined): timezone is string {
+  if (!timezone) return false
+  try {
+    Intl.DateTimeFormat('en-US', { timeZone: timezone })
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function normalizeTimezone(timezone: string | null | undefined): string {
+  return isValidTimezone(timezone) ? timezone : 'UTC'
+}
+
 export function getUserTimezone(): string {
   try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone
+    return normalizeTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
   } catch {
     return 'UTC'
   }
@@ -40,8 +54,9 @@ export function formatTimeInTimezone(
   options?: Intl.DateTimeFormatOptions
 ): string {
   const d = typeof date === 'string' ? new Date(date) : date
+  const safeTimezone = normalizeTimezone(timezone)
   return d.toLocaleString('en-US', {
-    timeZone: timezone,
+    timeZone: safeTimezone,
     ...options,
   })
 }
@@ -93,8 +108,9 @@ export function formatTimeRangeForDisplay(
 
 export function getTimezoneOffset(timezone: string): string {
   const now = new Date()
+  const safeTimezone = normalizeTimezone(timezone)
   const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
+    timeZone: safeTimezone,
     timeZoneName: 'shortOffset',
   })
   const parts = formatter.formatToParts(now)
