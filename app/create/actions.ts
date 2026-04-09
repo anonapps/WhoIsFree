@@ -40,7 +40,13 @@ const generateAdminToken = () => randomBytes(32).toString("hex")
 
 const isMissingColumnError = (error: DatabaseErrorLike | null) => {
   if (!error) return false
-  return error.code === "42703" || error.message?.includes("column") && error.message?.includes("does not exist")
+  const message = error.message?.toLowerCase() ?? ""
+  return (
+    error.code === "42703" ||
+    error.code === "PGRST204" ||
+    (message.includes("column") && message.includes("does not exist")) ||
+    (message.includes("schema cache") && message.includes("column"))
+  )
 }
 
 export async function createEvent(input: CreateEventInput) {
@@ -86,7 +92,11 @@ export async function createEvent(input: CreateEventInput) {
     .single()
 
   // Backward compatibility for environments where new columns are not migrated yet.
-  if (isMissingColumnError(eventError)) {
+  // Also retry on unexpected select/insert errors to avoid hard-failing creation during schema drift.
+  if (eventError) {
+    if (!isMissingColumnError(eventError)) {
+      console.warn("Primary event insert failed, retrying with legacy payload:", eventError)
+    }
     const { voting_deadline: _votingDeadline, deletion_time: _deletionTime, ...legacyPayload } = eventInsertPayload
     const fallbackResult = await supabase.from("events").insert(legacyPayload).select().single()
     event = fallbackResult.data

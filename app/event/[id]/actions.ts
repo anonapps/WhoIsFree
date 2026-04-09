@@ -33,7 +33,13 @@ const getRequesterIp = async () => {
 
 const isMissingColumnError = (error: DatabaseErrorLike | null) => {
   if (!error) return false
-  return error.code === "42703" || (error.message?.includes("column") && error.message?.includes("does not exist"))
+  const message = error.message?.toLowerCase() ?? ""
+  return (
+    error.code === "42703" ||
+    error.code === "PGRST204" ||
+    (message.includes("column") && message.includes("does not exist")) ||
+    (message.includes("schema cache") && message.includes("column"))
+  )
 }
 
 export async function submitVotes(input: SubmitVotesInput) {
@@ -59,7 +65,11 @@ export async function submitVotes(input: SubmitVotesInput) {
     .single()
 
   // Backward compatibility for environments where new columns are not migrated yet.
-  if (isMissingColumnError(eventError)) {
+  // Also retry on generic query errors to avoid blocking submissions during schema drift.
+  if (eventError) {
+    if (!isMissingColumnError(eventError)) {
+      console.warn("Primary event lookup failed, retrying with legacy select:", eventError)
+    }
     const fallbackResult = await supabase
       .from("events")
       .select("id,expires_at")
