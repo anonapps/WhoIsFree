@@ -3,6 +3,7 @@
 import { headers } from "next/headers"
 import { randomBytes } from "crypto"
 import { purgeExpiredEvents } from "@/lib/events/maintenance"
+import { incrementTotalEvents } from "@/lib/events/stats"
 import { checkRateLimit } from "@/lib/security/rate-limit"
 import { createClient } from "@/lib/supabase/server"
 
@@ -48,8 +49,12 @@ export async function createEvent(input: CreateEventInput) {
 
   const supabase = await createClient()
 
-  const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + 14)
+  const now = new Date()
+  const votingDeadline = new Date(now)
+  votingDeadline.setDate(votingDeadline.getDate() + input.votingDeadlineDays)
+
+  const deletionTime = new Date(now)
+  deletionTime.setDate(deletionTime.getDate() + 14)
 
   const { data: event, error: eventError } = await supabase
     .from("events")
@@ -60,8 +65,10 @@ export async function createEvent(input: CreateEventInput) {
       duration: input.duration,
       timezone: input.timezone,
       voting_deadline_days: input.votingDeadlineDays,
+      voting_deadline: votingDeadline.toISOString(),
+      deletion_time: deletionTime.toISOString(),
       admin_id: generateAdminToken(),
-      expires_at: expiresAt.toISOString(),
+      expires_at: deletionTime.toISOString(),
     })
     .select()
     .single()
@@ -83,6 +90,8 @@ export async function createEvent(input: CreateEventInput) {
     await supabase.from("events").delete().eq("id", event.id)
     return { error: "Failed to create time slots" }
   }
+
+  await incrementTotalEvents()
 
   return {
     eventId: event.id,

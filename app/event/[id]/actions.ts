@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers"
 import { purgeExpiredEvents } from "@/lib/events/maintenance"
+import { incrementTotalParticipants } from "@/lib/events/stats"
 import { checkRateLimit } from "@/lib/security/rate-limit"
 import { createClient } from "@/lib/supabase/server"
 
@@ -41,6 +42,24 @@ export async function submitVotes(input: SubmitVotesInput) {
   }
 
   const supabase = await createClient()
+  const { data: event, error: eventError } = await supabase
+    .from("events")
+    .select("id,voting_deadline,deletion_time")
+    .eq("id", input.eventId)
+    .single()
+
+  if (eventError || !event) {
+    return { error: "This event is no longer available." }
+  }
+
+  if (event.deletion_time && new Date(event.deletion_time).getTime() <= Date.now()) {
+    await supabase.from("events").delete().eq("id", input.eventId)
+    return { error: "This event is no longer available." }
+  }
+
+  if (event.voting_deadline && new Date(event.voting_deadline).getTime() <= Date.now()) {
+    return { error: "Voting is closed for this event." }
+  }
 
   const { data: participant, error: participantError } = await supabase
     .from("participants")
@@ -71,6 +90,8 @@ export async function submitVotes(input: SubmitVotesInput) {
       return { error: "Failed to submit votes" }
     }
   }
+
+  await incrementTotalParticipants()
 
   return { success: true }
 }
