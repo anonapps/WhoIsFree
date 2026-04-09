@@ -171,6 +171,10 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-8">
+        <form
+          autoComplete="off"
+          onSubmit={(e) => e.preventDefault()}
+        >
         {/* Event Info */}
         <Card className="mb-6">
           <CardHeader>
@@ -209,9 +213,15 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
               <Label htmlFor="name">Your Name *</Label>
               <Input
                 id="name"
+                name="participant_input"
+                type="text"
                 placeholder="Enter your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
             </div>
             <div className="space-y-2">
@@ -319,6 +329,7 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
             None of These Work
           </Button>
         </div>
+        </form>
       </main>
     </div>
   )
