@@ -25,11 +25,11 @@ export default function LandingPage() {
       <main className="flex-1">
         <section className="py-16 md:py-24">
           <div className="max-w-5xl mx-auto px-4 text-center">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-balance mb-6">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight md:leading-tight text-balance mb-6">
               Find the perfect meeting time
               <span className="text-primary block mt-2">for everyone</span>
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8 text-pretty">
+            <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-8 text-pretty">
               Stop the endless back-and-forth. Create an event, share a link, and let participants 
               mark their availability. See results instantly with a visual heatmap.
             </p>
@@ -50,7 +50,7 @@ export default function LandingPage() {
         {/* How It Works */}
         <section className="py-16 bg-card border-y border-border">
           <div className="max-w-5xl mx-auto px-4">
-            <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold leading-tight text-center mb-12">
               How It Works
             </h2>
             <div className="grid md:grid-cols-3 gap-8">
@@ -88,7 +88,7 @@ export default function LandingPage() {
         {/* Features */}
         <section className="py-16">
           <div className="max-w-5xl mx-auto px-4">
-            <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold leading-tight text-center mb-12">
               Why WhoIsFree?
             </h2>
             <div className="grid sm:grid-cols-2 gap-6">
@@ -135,10 +135,10 @@ export default function LandingPage() {
         {/* CTA */}
         <section className="py-16 bg-primary text-primary-foreground">
           <div className="max-w-5xl mx-auto px-4 text-center">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold leading-tight mb-4">
               Ready to schedule your meeting?
             </h2>
-            <p className="text-primary-foreground/80 mb-8 max-w-xl mx-auto">
+            <p className="text-primary-foreground/80 leading-relaxed mb-8 max-w-xl mx-auto">
               Create your event in under a minute. No sign-up needed.
             </p>
             <Button size="lg" variant="secondary" asChild>
