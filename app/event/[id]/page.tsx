@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { headers } from "next/headers"
 import { notFound, redirect } from "next/navigation"
 import { ParticipantView } from "./participant-view"
 
@@ -9,6 +10,8 @@ interface EventPageProps {
 export default async function EventPage({ params }: EventPageProps) {
   const { id } = await params
   const supabase = await createClient()
+  const requestHeaders = await headers()
+  const visitorTimezone = requestHeaders.get("x-vercel-ip-timezone")
 
   // Fetch event data
   const { data: event, error: eventError } = await supabase
@@ -49,6 +52,7 @@ export default async function EventPage({ params }: EventPageProps) {
       event={event}
       timeSlots={timeSlots || []}
       participantCount={participantCount || 0}
+      initialTimezone={visitorTimezone}
     />
   )
 }
