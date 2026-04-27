@@ -8,19 +8,13 @@ export async function GET() {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    const { error } = await supabase
-      .from('events') // change if needed
-      .select('id')
-      .limit(1)
+    // lightweight ping (doesn't matter if it fails)
+    await supabase.from('events').select('id').limit(1)
 
-    if (error) {
-    console.error('Keep-alive error:', error.message)
-    return NextResponse.json({ ok: true, warning: error.message })
-  }
-
-    return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error('Unexpected error:', err)
-    return NextResponse.json({ ok: false }, { status: 500 })
+    console.error('Keep-alive error:', err)
   }
+
+  // ALWAYS return success
+  return NextResponse.json({ ok: true })
 }
