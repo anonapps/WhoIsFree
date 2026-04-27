@@ -9,7 +9,7 @@ export async function GET() {
     )
 
     const { error } = await supabase
-      .from('availability') // change if needed
+      .from('events') // change if needed
       .select('id')
       .limit(1)
 
