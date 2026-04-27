@@ -28,13 +28,14 @@ interface ParticipantViewProps {
   event: Event
   timeSlots: TimeSlot[]
   participantCount: number
+  initialTimezone?: string | null
 }
 
 type VoteState = 'none' | 'yes' | 'preferred'
 
-export function ParticipantView({ event, timeSlots, participantCount }: ParticipantViewProps) {
+export function ParticipantView({ event, timeSlots, participantCount, initialTimezone }: ParticipantViewProps) {
   const [name, setName] = useState("")
-  const [timezone, setTimezone] = useState("UTC")
+  const [timezone, setTimezone] = useState(() => normalizeTimezone(initialTimezone))
   const [isHydrated, setIsHydrated] = useState(false)
   const [votes, setVotes] = useState<Record<string, VoteState>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -43,9 +44,30 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
 
   // Set timezone after hydration to avoid mismatch
   useEffect(() => {
-    setTimezone(normalizeTimezone(getUserTimezone()))
+    const headerTimezone = normalizeTimezone(initialTimezone)
+    const browserTimezone = normalizeTimezone(getUserTimezone())
+    setTimezone(headerTimezone === "UTC" ? browserTimezone : headerTimezone)
     setIsHydrated(true)
-  }, [])
+  }, [initialTimezone])
+
+  const handleTimezoneChange = (value: string) => {
+    setTimezone(normalizeTimezone(value))
+  }
+
+  const displayTimezone = normalizeTimezone(timezone)
+
+  const timezoneOptions = useMemo(() => {
+    const hasCurrentTimezone = COMMON_TIMEZONES.some((tz) => tz.value === displayTimezone)
+
+    if (hasCurrentTimezone) {
+      return COMMON_TIMEZONES
+    }
+
+    return [
+      { value: displayTimezone, label: `${displayTimezone} (Detected)` },
+      ...COMMON_TIMEZONES,
+    ]
+  }, [displayTimezone])
 
   const handleTimezoneChange = (value: string) => {
     setTimezone(normalizeTimezone(value))
