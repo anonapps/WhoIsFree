@@ -40,6 +40,8 @@ SET
 CREATE OR REPLACE FUNCTION increment_total_events()
 RETURNS VOID
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
   INSERT INTO stats_global (id, total_events, total_participants, updated_at)
@@ -54,6 +56,8 @@ $$;
 CREATE OR REPLACE FUNCTION increment_total_participants()
 RETURNS VOID
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
   INSERT INTO stats_global (id, total_events, total_participants, updated_at)
@@ -64,6 +68,10 @@ BEGIN
     updated_at = NOW();
 END;
 $$;
+
+GRANT SELECT ON stats_global TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION increment_total_events() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION increment_total_participants() TO anon, authenticated;
 
 CREATE OR REPLACE FUNCTION purge_expired_events()
 RETURNS INTEGER
