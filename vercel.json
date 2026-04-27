@@ -3,6 +3,6 @@
     {
       "path": "/api/keep-alive",
       "schedule": "0 */9 * * *"
-    }
+     }
   ]
 }
