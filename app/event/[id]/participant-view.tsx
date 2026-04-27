@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useMemo, useState, useEffect } from "react"
 import Link from "next/link"
 import { Calendar, Users, Clock, Info, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { COMMON_TIMEZONES, getUserTimezone, formatDateForDisplay, formatTimeRangeForDisplay } from "@/lib/timezone"
+import {
+  COMMON_TIMEZONES,
+  getUserTimezone,
+  formatDateForDisplay,
+  formatTimeRangeForDisplay,
+  normalizeTimezone,
+} from "@/lib/timezone"
 import type { Event, TimeSlot } from "@/lib/types"
 import { submitVotes } from "./actions"
 
@@ -37,9 +43,27 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
 
   // Set timezone after hydration to avoid mismatch
   useEffect(() => {
-    setTimezone(getUserTimezone())
+    setTimezone(normalizeTimezone(getUserTimezone()))
     setIsHydrated(true)
   }, [])
+
+  const handleTimezoneChange = (value: string) => {
+    setTimezone(normalizeTimezone(value))
+  }
+
+  const timezoneOptions = useMemo(() => {
+    const safeTimezone = normalizeTimezone(timezone)
+    const hasCurrentTimezone = COMMON_TIMEZONES.some((tz) => tz.value === safeTimezone)
+
+    if (hasCurrentTimezone) {
+      return COMMON_TIMEZONES
+    }
+
+    return [
+      { value: safeTimezone, label: `${safeTimezone} (Detected)` },
+      ...COMMON_TIMEZONES,
+    ]
+  }, [timezone])
 
   // Group time slots by date
   const slotsByDate = timeSlots.reduce((acc, slot) => {
@@ -226,12 +250,12 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
             </div>
             <div className="space-y-2">
               <Label htmlFor="timezone">Your Timezone</Label>
-              <Select value={timezone} onValueChange={setTimezone}>
+              <Select value={normalizeTimezone(timezone)} onValueChange={handleTimezoneChange}>
                 <SelectTrigger id="timezone">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {COMMON_TIMEZONES.map((tz) => (
+                  {timezoneOptions.map((tz) => (
                     <SelectItem key={tz.value} value={tz.value}>
                       {tz.label}
                     </SelectItem>
