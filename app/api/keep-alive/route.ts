@@ -16,5 +16,5 @@ export async function GET() {
   }
 
   // ALWAYS return success
-  return NextResponse.json({ ok: true })
+return NextResponse.json({ ok: true, version: "v2" })
 }
