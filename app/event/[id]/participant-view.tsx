@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useMemo, useState, useEffect } from "react"
 import Link from "next/link"
 import { Calendar, Users, Clock, Info, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -40,6 +40,19 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
     setTimezone(getUserTimezone())
     setIsHydrated(true)
   }, [])
+
+  const timezoneOptions = useMemo(() => {
+    const hasCurrentTimezone = COMMON_TIMEZONES.some((tz) => tz.value === timezone)
+
+    if (hasCurrentTimezone) {
+      return COMMON_TIMEZONES
+    }
+
+    return [
+      { value: timezone, label: `${timezone} (Detected)` },
+      ...COMMON_TIMEZONES,
+    ]
+  }, [timezone])
 
   // Group time slots by date
   const slotsByDate = timeSlots.reduce((acc, slot) => {
@@ -231,7 +244,7 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {COMMON_TIMEZONES.map((tz) => (
+                  {timezoneOptions.map((tz) => (
                     <SelectItem key={tz.value} value={tz.value}>
                       {tz.label}
                     </SelectItem>
