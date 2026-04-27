@@ -4,26 +4,10 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'WhoIsFree - Free Group Scheduling Tool',
-  description: 'Find the perfect meeting time for your group. No sign-up required. Just create, share, and coordinate.',
-  generator: 'v0.app',
+  description: 'Find the perfect meeting time for your group. Anonymously .',
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
-  },
-}
+      icon: '/favicon.ico',
+},
 
 export default function RootLayout({
   children,
