@@ -69,25 +69,6 @@ export function ParticipantView({ event, timeSlots, participantCount, initialTim
     ]
   }, [displayTimezone])
 
-  const handleTimezoneChange = (value: string) => {
-    setTimezone(normalizeTimezone(value))
-  }
-
-  const displayTimezone = normalizeTimezone(timezone)
-
-  const timezoneOptions = useMemo(() => {
-    const hasCurrentTimezone = COMMON_TIMEZONES.some((tz) => tz.value === displayTimezone)
-
-    if (hasCurrentTimezone) {
-      return COMMON_TIMEZONES
-    }
-
-    return [
-      { value: displayTimezone, label: `${displayTimezone} (Detected)` },
-      ...COMMON_TIMEZONES,
-    ]
-  }, [displayTimezone])
-
   // Group time slots by date
   const slotsByDate = timeSlots.reduce((acc, slot) => {
     const date = formatDateForDisplay(slot.start_time, displayTimezone)
