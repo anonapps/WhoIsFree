@@ -14,7 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { COMMON_TIMEZONES, getUserTimezone, formatDateForDisplay, formatTimeRangeForDisplay } from "@/lib/timezone"
+import {
+  COMMON_TIMEZONES,
+  getUserTimezone,
+  formatDateForDisplay,
+  formatTimeRangeForDisplay,
+  normalizeTimezone,
+} from "@/lib/timezone"
 import type { Event, TimeSlot } from "@/lib/types"
 import { submitVotes } from "./actions"
 
@@ -37,26 +43,32 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
 
   // Set timezone after hydration to avoid mismatch
   useEffect(() => {
-    setTimezone(getUserTimezone())
+    setTimezone(normalizeTimezone(getUserTimezone()))
     setIsHydrated(true)
   }, [])
 
+  const handleTimezoneChange = (value: string) => {
+    setTimezone(normalizeTimezone(value))
+  }
+
+  const displayTimezone = normalizeTimezone(timezone)
+
   const timezoneOptions = useMemo(() => {
-    const hasCurrentTimezone = COMMON_TIMEZONES.some((tz) => tz.value === timezone)
+    const hasCurrentTimezone = COMMON_TIMEZONES.some((tz) => tz.value === displayTimezone)
 
     if (hasCurrentTimezone) {
       return COMMON_TIMEZONES
     }
 
     return [
-      { value: timezone, label: `${timezone} (Detected)` },
+      { value: displayTimezone, label: `${displayTimezone} (Detected)` },
       ...COMMON_TIMEZONES,
     ]
-  }, [timezone])
+  }, [displayTimezone])
 
   // Group time slots by date
   const slotsByDate = timeSlots.reduce((acc, slot) => {
-    const date = formatDateForDisplay(slot.start_time, timezone)
+    const date = formatDateForDisplay(slot.start_time, displayTimezone)
     if (!acc[date]) {
       acc[date] = []
     }
@@ -239,7 +251,7 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
             </div>
             <div className="space-y-2">
               <Label htmlFor="timezone">Your Timezone</Label>
-              <Select value={timezone} onValueChange={setTimezone}>
+              <Select value={displayTimezone} onValueChange={handleTimezoneChange}>
                 <SelectTrigger id="timezone">
                   <SelectValue />
                 </SelectTrigger>
@@ -267,7 +279,7 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
             <div className="flex items-start gap-2 p-3 bg-muted rounded-lg text-sm">
               <Info className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
               <p className="text-muted-foreground">
-                Times are shown in your timezone{isHydrated ? ` (${timezone})` : ""}.
+                Times are shown in your timezone{isHydrated ? ` (${displayTimezone})` : ""}.
               </p>
             </div>
 
@@ -289,7 +301,7 @@ export function ParticipantView({ event, timeSlots, participantCount }: Particip
                           ${voteState === 'preferred' ? 'border-primary bg-primary text-primary-foreground' : ''}
                         `}
                       >
-                        <div>{formatTimeRangeForDisplay(slot.start_time, event.duration, timezone)}</div>
+                        <div>{formatTimeRangeForDisplay(slot.start_time, event.duration, displayTimezone)}</div>
                         <div className="text-xs mt-1 opacity-70">
                           {voteState === 'none' && 'Click to select'}
                           {voteState === 'yes' && 'Available'}
