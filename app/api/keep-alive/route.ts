@@ -14,9 +14,9 @@ export async function GET() {
       .limit(1)
 
     if (error) {
-      console.error('Keep-alive error:', error.message)
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
-    }
+    console.error('Keep-alive error:', error.message)
+    return NextResponse.json({ ok: true, warning: error.message })
+  }
 
     return NextResponse.json({ ok: true })
   } catch (err) {
