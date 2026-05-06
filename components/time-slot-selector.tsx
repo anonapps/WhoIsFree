@@ -185,7 +185,7 @@ export function TimeSlotSelector({
         onMouseLeave={() => isDragging && handleMouseUp()}
       >
         {/* Header row - days */}
-        <div className="grid grid-cols-[60px_repeat(7,1fr)] bg-muted border-b border-border">
+        <div className="grid grid-cols-[84px_repeat(7,1fr)] bg-muted border-b border-border">
           <div className="p-2" />
           {days.map((day, i) => (
             <div key={i} className="p-2 text-center text-sm font-medium border-l border-border">
@@ -200,7 +200,7 @@ export function TimeSlotSelector({
         {/* Time rows */}
         <div className="max-h-[400px] overflow-y-auto">
           {timeSlots.map((timeSlot, timeIdx) => (
-            <div key={timeIdx} className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border last:border-b-0">
+            <div key={timeIdx} className="grid grid-cols-[84px_repeat(7,1fr)] border-b border-border last:border-b-0">
               <div className="p-1.5 text-xs text-muted-foreground text-right pr-2 bg-muted/50">
                 {formatTimeForDisplay(timeSlot, timezone)}
               </div>
