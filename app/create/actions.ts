@@ -121,7 +121,12 @@ export async function createEvent(input: CreateEventInput) {
     return { error: "Failed to create time slots" }
   }
 
-  await incrementTotalEvents()
+  const statsIncremented = await incrementTotalEvents()
+
+  if (!statsIncremented) {
+    await supabase.from("events").delete().eq("id", event.id)
+    return { error: "Failed to create event" }
+  }
 
   return {
     eventId: event.id,
