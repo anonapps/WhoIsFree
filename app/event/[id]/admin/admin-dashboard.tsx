@@ -30,6 +30,10 @@ export function AdminDashboard({ event, timeSlots, participants, adminKey }: Adm
   const [timezone, setTimezone] = useState(() => getUserTimezone())
   const [linkCopied, setLinkCopied] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null)
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
+
+  const isAdvancedMode = event.advanced_mode_enabled === true
 
   const participantLink = typeof window !== 'undefined' 
     ? `${window.location.origin}/event/${event.id}`
@@ -72,6 +76,37 @@ export function AdminDashboard({ event, timeSlots, participants, adminKey }: Adm
       .slice(0, 3)
   }, [timeSlots])
 
+  const selectedParticipant = useMemo(() => {
+    if (!isAdvancedMode || !selectedParticipantId) return null
+    return participants.find((participant) => participant.id === selectedParticipantId) ?? null
+  }, [isAdvancedMode, participants, selectedParticipantId])
+
+  const selectedSlot = useMemo(() => {
+    if (!isAdvancedMode || !selectedSlotId) return null
+    return timeSlots.find((slot) => slot.id === selectedSlotId) ?? null
+  }, [isAdvancedMode, selectedSlotId, timeSlots])
+
+  const selectedSlotResponses = selectedSlot?.responses ?? []
+
+  const handleParticipantClick = (participantId: string) => {
+    if (!isAdvancedMode) return
+    setSelectedParticipantId((currentParticipantId) =>
+      currentParticipantId === participantId ? null : participantId,
+    )
+    setSelectedSlotId(null)
+  }
+
+  const handleSlotClick = (slotId: string) => {
+    if (!isAdvancedMode) return
+    setSelectedSlotId((currentSlotId) => (currentSlotId === slotId ? null : slotId))
+    setSelectedParticipantId(null)
+  }
+
+  const clearAdvancedSelection = () => {
+    setSelectedParticipantId(null)
+    setSelectedSlotId(null)
+  }
+
   // Get heatmap color based on score
   const getHeatmapColor = (score: number): string => {
     if (score === 0) return 'bg-muted'
@@ -81,6 +116,42 @@ export function AdminDashboard({ event, timeSlots, participants, adminKey }: Adm
     if (intensity >= 0.4) return 'bg-primary/60'
     if (intensity >= 0.2) return 'bg-primary/40'
     return 'bg-primary/20'
+  }
+
+  const getSlotParticipantResponse = (slot: TimeSlotWithResponses) => {
+    if (!selectedParticipantId) return null
+    return slot.responses.find((response) => response.participant_id === selectedParticipantId) ?? null
+  }
+
+  const getAdvancedSlotClassName = (slot: TimeSlotWithResponses) => {
+    const selectedClassName = selectedSlotId === slot.id ? 'ring-2 ring-primary ring-offset-2' : ''
+
+    if (!selectedParticipantId) {
+      return `${getHeatmapColor(slot.score)} ${slot.score > 0 ? 'text-primary-foreground' : 'text-muted-foreground'} ${selectedClassName}`
+    }
+
+    const participantResponse = getSlotParticipantResponse(slot)
+
+    if (participantResponse?.vote_type === 'preferred') {
+      return `bg-primary text-primary-foreground ${selectedClassName}`
+    }
+
+    if (participantResponse?.vote_type === 'yes') {
+      return `bg-primary/30 text-primary ${selectedClassName}`
+    }
+
+    return 'bg-muted/40 text-muted-foreground opacity-50'
+  }
+
+  const getSlotDetailText = (slot: TimeSlotWithResponses) => {
+    if (isAdvancedMode && selectedParticipantId) {
+      const participantResponse = getSlotParticipantResponse(slot)
+      if (participantResponse?.vote_type === 'preferred') return 'Preferred'
+      if (participantResponse?.vote_type === 'yes') return 'Available'
+      return 'No selection'
+    }
+
+    return `${slot.responses.length} vote${slot.responses.length !== 1 ? 's' : ''}`
   }
 
   return (
@@ -175,6 +246,14 @@ export function AdminDashboard({ event, timeSlots, participants, adminKey }: Adm
                     </SelectContent>
                   </Select>
                 </div>
+                {isAdvancedMode && selectedParticipant && (
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-muted p-3 text-sm">
+                    <span>Showing selections for {selectedParticipant.name}</span>
+                    <button type="button" className="text-primary hover:underline" onClick={clearAdvancedSelection}>
+                      Clear
+                    </button>
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 {participants.length === 0 ? (
@@ -193,17 +272,20 @@ export function AdminDashboard({ event, timeSlots, participants, adminKey }: Adm
                             <div
                               key={slot.id}
                               className={`
-                                p-3 rounded-lg text-center transition-all cursor-default
-                                ${getHeatmapColor(slot.score)}
-                                ${slot.score > 0 ? 'text-primary-foreground' : 'text-muted-foreground'}
+                                p-3 rounded-lg text-center transition-all
+                                ${isAdvancedMode ? 'cursor-pointer hover:ring-2 hover:ring-primary/40' : 'cursor-default'}
+                                ${isAdvancedMode
+                                  ? getAdvancedSlotClassName(slot)
+                                  : `${getHeatmapColor(slot.score)} ${slot.score > 0 ? 'text-primary-foreground' : 'text-muted-foreground'}`}
                               `}
                               title={`${slot.responses.length} response(s), Score: ${slot.score}`}
+                              onClick={() => handleSlotClick(slot.id)}
                             >
                               <div className="text-sm font-medium">
                                 {formatTimeForDisplay(slot.start_time, timezone)}
                               </div>
                               <div className="text-xs mt-1 opacity-80">
-                                {slot.responses.length} vote{slot.responses.length !== 1 ? 's' : ''}
+                                {getSlotDetailText(slot)}
                               </div>
                             </div>
                           ))}
@@ -282,12 +364,41 @@ export function AdminDashboard({ event, timeSlots, participants, adminKey }: Adm
               <CardHeader>
                 <CardTitle className="text-base">Participants</CardTitle>
                 <CardDescription>
-                  {participants.length} response{participants.length !== 1 ? 's' : ''} received
+                  {isAdvancedMode && selectedSlot
+                    ? `Showing voters for ${formatTimeForDisplay(selectedSlot.start_time, timezone)}`
+                    : `${participants.length} response${participants.length !== 1 ? 's' : ''} received`}
                 </CardDescription>
+                {isAdvancedMode && selectedSlot && (
+                  <button type="button" className="mt-2 text-left text-sm text-primary hover:underline" onClick={clearAdvancedSelection}>
+                    Clear selection
+                  </button>
+                )}
               </CardHeader>
               <CardContent>
                 {participants.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No responses yet</p>
+                ) : isAdvancedMode && selectedSlot ? (
+                  selectedSlotResponses.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No one voted for this slot</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {selectedSlotResponses.map((response) => (
+                        <li
+                          key={`${selectedSlot.id}-${response.participant_id}`}
+                          className="flex items-center justify-between p-2 rounded bg-muted/50 text-sm"
+                        >
+                          <span className="font-medium">{response.participant_name}</span>
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                            response.vote_type === 'preferred'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-primary/10 text-primary'
+                          }`}>
+                            {response.vote_type === 'preferred' ? 'Preferred' : 'Available'}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )
                 ) : (
                   <ul className="space-y-2">
                     {participants.map((p) => {
@@ -297,7 +408,12 @@ export function AdminDashboard({ event, timeSlots, participants, adminKey }: Adm
                       return (
                         <li
                           key={p.id}
-                          className="flex items-center justify-between p-2 rounded bg-muted/50 text-sm"
+                          className={`flex items-center justify-between p-2 rounded bg-muted/50 text-sm ${
+                            isAdvancedMode
+                              ? `cursor-pointer transition-colors hover:bg-muted ${selectedParticipantId === p.id ? 'ring-2 ring-primary' : ''}`
+                              : ''
+                          }`}
+                          onClick={() => handleParticipantClick(p.id)}
                         >
                           <span className="font-medium">{p.name}</span>
                           <span className="text-muted-foreground">
