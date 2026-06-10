@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 
 const STATS_ROW_ID = 1
 
-type AggregateCounts = {
+type GlobalStats = {
   totalEvents: number
   totalParticipants: number
 }
@@ -20,59 +20,54 @@ const isMissingDatabaseObjectError = (error: { code?: string; message?: string }
   )
 }
 
-async function getLiveAggregateCounts(): Promise<AggregateCounts> {
+async function runStatsIncrement(functionName: "increment_total_events" | "increment_total_participants") {
   const supabase = await createClient()
+  const { error } = await supabase.rpc(functionName)
 
-  const [{ count: eventsCount }, { count: participantsCount }] = await Promise.all([
-    supabase.from("events").select("id", { count: "exact", head: true }),
-    supabase.from("participants").select("id", { count: "exact", head: true }),
-  ])
-
-  return {
-    totalEvents: eventsCount ?? 0,
-    totalParticipants: participantsCount ?? 0,
+  if (!error) {
+    return true
   }
+
+  if (isMissingDatabaseObjectError(error)) {
+    console.error("Global stats database objects are missing. Run the latest migrations.", error)
+  } else {
+    console.error(`Failed to run ${functionName}:`, error)
+  }
+
+  return false
 }
 
 export async function incrementTotalEvents() {
-  const supabase = await createClient()
-  const { error } = await supabase.rpc("increment_total_events")
-
-  if (error && !isMissingDatabaseObjectError(error)) {
-    console.error("Failed to increment total events:", error)
-  }
+  return runStatsIncrement("increment_total_events")
 }
 
 export async function incrementTotalParticipants() {
-  const supabase = await createClient()
-  const { error } = await supabase.rpc("increment_total_participants")
-
-  if (error && !isMissingDatabaseObjectError(error)) {
-    console.error("Failed to increment total participants:", error)
-  }
+  return runStatsIncrement("increment_total_participants")
 }
 
-export async function getGlobalStats() {
+export async function getGlobalStats(): Promise<GlobalStats> {
   const supabase = await createClient()
-  const [statsResult, liveCounts] = await Promise.all([
-    supabase
-      .from("stats_global")
-      .select("total_events,total_participants")
-      .eq("id", STATS_ROW_ID)
-      .single(),
-    getLiveAggregateCounts(),
-  ])
+  const { data, error } = await supabase
+    .from("global_stats")
+    .select("events_created_total,participants_submitted_total")
+    .eq("id", STATS_ROW_ID)
+    .single()
 
-  if (statsResult.error) {
-    if (!isMissingDatabaseObjectError(statsResult.error)) {
-      console.error("Failed to fetch global stats:", statsResult.error)
+  if (error) {
+    if (isMissingDatabaseObjectError(error)) {
+      console.error("Global stats table is missing. Run the latest migrations.", error)
+    } else {
+      console.error("Failed to fetch global stats:", error)
     }
 
-    return liveCounts
+    return {
+      totalEvents: 0,
+      totalParticipants: 0,
+    }
   }
 
   return {
-    totalEvents: Math.max(statsResult.data?.total_events ?? 0, liveCounts.totalEvents),
-    totalParticipants: Math.max(statsResult.data?.total_participants ?? 0, liveCounts.totalParticipants),
+    totalEvents: Number(data?.events_created_total ?? 0),
+    totalParticipants: Number(data?.participants_submitted_total ?? 0),
   }
 }

@@ -77,6 +77,12 @@ export async function submitVotes(input: SubmitVotesInput) {
       .single()
 
     event = fallbackResult.data
+      ? {
+          ...fallbackResult.data,
+          voting_deadline: null,
+          deletion_time: null,
+        }
+      : null
     eventError = fallbackResult.error
   }
 
@@ -125,7 +131,12 @@ export async function submitVotes(input: SubmitVotesInput) {
     }
   }
 
-  await incrementTotalParticipants()
+  const statsIncremented = await incrementTotalParticipants()
+
+  if (!statsIncremented) {
+    await supabase.from("participants").delete().eq("id", participant.id)
+    return { error: "Failed to submit response" }
+  }
 
   return { success: true }
 }

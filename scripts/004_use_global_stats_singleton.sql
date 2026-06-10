@@ -1,22 +1,6 @@
--- Add countdown timestamps and persistent all-time global stats counters
-
-ALTER TABLE events
-  ADD COLUMN IF NOT EXISTS voting_deadline TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS deletion_time TIMESTAMPTZ;
-
--- Keep legacy events safe by deriving timestamps when null.
-UPDATE events
-SET voting_deadline = created_at + (voting_deadline_days || ' days')::INTERVAL
-WHERE voting_deadline IS NULL;
-
-UPDATE events
-SET deletion_time = COALESCE(expires_at, created_at + INTERVAL '14 days')
-WHERE deletion_time IS NULL;
-
--- Keep legacy expiration behavior aligned with new deletion timestamp.
-UPDATE events
-SET expires_at = deletion_time
-WHERE expires_at IS DISTINCT FROM deletion_time;
+-- Ensure all-time stats live in the privacy-preserving global_stats singleton.
+-- The table stores only aggregate counters and never event IDs, participant names,
+-- IPs, links, or per-event details.
 
 CREATE TABLE IF NOT EXISTS global_stats (
   id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
@@ -28,6 +12,23 @@ CREATE TABLE IF NOT EXISTS global_stats (
 INSERT INTO global_stats (id, events_created_total, participants_submitted_total)
 VALUES (1, 0, 0)
 ON CONFLICT (id) DO NOTHING;
+
+-- Preserve aggregate values from the older stats_global table if that migration
+-- has already run. This copies only aggregate counters, not active event data.
+DO $$
+BEGIN
+  IF to_regclass('public.stats_global') IS NOT NULL THEN
+    UPDATE global_stats AS gs
+    SET
+      events_created_total = GREATEST(gs.events_created_total, COALESCE(sg.total_events, 0)),
+      participants_submitted_total = GREATEST(gs.participants_submitted_total, COALESCE(sg.total_participants, 0)),
+      updated_at = NOW()
+    FROM stats_global AS sg
+    WHERE gs.id = 1
+      AND sg.id = 1;
+  END IF;
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION increment_total_events()
 RETURNS VOID
@@ -64,19 +65,3 @@ $$;
 GRANT SELECT ON global_stats TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION increment_total_events() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION increment_total_participants() TO anon, authenticated;
-
-CREATE OR REPLACE FUNCTION purge_expired_events()
-RETURNS INTEGER
-LANGUAGE plpgsql
-AS $$
-DECLARE
-  deleted_count INTEGER;
-BEGIN
-  DELETE FROM events
-  WHERE deletion_time IS NOT NULL
-    AND deletion_time <= NOW();
-
-  GET DIAGNOSTICS deleted_count = ROW_COUNT;
-  RETURN deleted_count;
-END;
-$$;
