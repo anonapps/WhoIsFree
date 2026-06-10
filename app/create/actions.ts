@@ -14,6 +14,7 @@ interface CreateEventInput {
   duration: number
   timezone: string
   votingDeadlineDays: number
+  advancedModeEnabled?: boolean
   timeSlots: string[]
 }
 
@@ -79,6 +80,7 @@ export async function createEvent(input: CreateEventInput) {
     duration: input.duration,
     timezone: input.timezone,
     voting_deadline_days: input.votingDeadlineDays,
+    advanced_mode_enabled: input.advancedModeEnabled ?? false,
     voting_deadline: votingDeadline.toISOString(),
     deletion_time: deletionTime.toISOString(),
     admin_id: generateAdminToken(),
@@ -97,7 +99,12 @@ export async function createEvent(input: CreateEventInput) {
     if (!isMissingColumnError(eventError)) {
       console.warn("Primary event insert failed, retrying with legacy payload:", eventError)
     }
-    const { voting_deadline: _votingDeadline, deletion_time: _deletionTime, ...legacyPayload } = eventInsertPayload
+    const {
+      voting_deadline: _votingDeadline,
+      deletion_time: _deletionTime,
+      advanced_mode_enabled: _advancedModeEnabled,
+      ...legacyPayload
+    } = eventInsertPayload
     const fallbackResult = await supabase.from("events").insert(legacyPayload).select().single()
     event = fallbackResult.data
     eventError = fallbackResult.error

@@ -6,6 +6,7 @@ export interface Event {
   duration: number
   timezone: string
   voting_deadline_days: number
+  advanced_mode_enabled: boolean
   voting_deadline: string | null
   deletion_time: string | null
   admin_id: string
