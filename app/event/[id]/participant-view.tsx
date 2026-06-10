@@ -342,6 +342,13 @@ export function ParticipantView({ event, timeSlots, participantCount, initialTim
           </div>
         )}
 
+        {event.advanced_mode_enabled === true && (
+          <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <Info className="h-4 w-4 mt-0.5 shrink-0" />
+            <p>Event organizer is using Advanced mode and can track your individual selections.</p>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row gap-3">
           <Button
             type="button"

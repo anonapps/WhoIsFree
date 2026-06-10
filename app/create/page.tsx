@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import {
   Select,
   SelectContent,
@@ -31,6 +32,7 @@ type CreateDraft = {
   duration: string
   timezone: string
   votingDeadlineDays: string
+  advancedModeEnabled: boolean
   selectedSlots: string[]
   draftTimestamp: string
 }
@@ -50,6 +52,7 @@ export default function CreateEventPage() {
   const [duration, setDuration] = useState("60")
   const [timezone, setTimezone] = useState(() => getUserTimezone())
   const [votingDeadlineDays, setVotingDeadlineDays] = useState("3")
+  const [advancedModeEnabled, setAdvancedModeEnabled] = useState(false)
   const [selectedSlots, setSelectedSlots] = useState<Date[]>([])
 
   useEffect(() => {
@@ -73,6 +76,7 @@ export default function CreateEventPage() {
           setDuration(parsedDraft.duration ?? "60")
           setTimezone(parsedDraft.timezone ?? getUserTimezone())
           setVotingDeadlineDays(parsedDraft.votingDeadlineDays ?? "3")
+          setAdvancedModeEnabled(parsedDraft.advancedModeEnabled ?? false)
           setSelectedSlots((parsedDraft.selectedSlots ?? []).map((slot) => new Date(slot)).filter((slot) => !Number.isNaN(slot.getTime())))
         }
       } catch {
@@ -95,12 +99,13 @@ export default function CreateEventPage() {
       duration,
       timezone,
       votingDeadlineDays,
+      advancedModeEnabled,
       selectedSlots: selectedSlots.map((slot) => slot.toISOString()),
       draftTimestamp: new Date().toISOString(),
     }
 
     window.sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
-  }, [hasLoadedDraft, step, title, description, instructions, duration, timezone, votingDeadlineDays, selectedSlots])
+  }, [hasLoadedDraft, step, title, description, instructions, duration, timezone, votingDeadlineDays, advancedModeEnabled, selectedSlots])
 
   useEffect(() => {
     if (!hasLoadedDraft || typeof window === "undefined") return
@@ -172,6 +177,7 @@ export default function CreateEventPage() {
         duration: parseInt(duration),
         timezone,
         votingDeadlineDays: parseInt(votingDeadlineDays),
+        advancedModeEnabled,
         timeSlots: selectedSlots.map((d) => d.toISOString()),
       })
 
@@ -408,6 +414,23 @@ export default function CreateEventPage() {
               <div className="rounded-md border border-amber-200 bg-amber-50 text-amber-900 p-3 text-sm flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                 <p>Once created, this event cannot be modified.</p>
+              </div>
+
+              <div className="rounded-lg border p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="advanced-mode">Advanced mode</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Enable advanced scheduling options for this event.
+                    </p>
+                  </div>
+                  <Switch
+                    id="advanced-mode"
+                    checked={advancedModeEnabled}
+                    onCheckedChange={setAdvancedModeEnabled}
+                    aria-label="Enable Advanced mode"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-between pt-4">
