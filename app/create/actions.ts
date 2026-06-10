@@ -14,6 +14,7 @@ interface CreateEventInput {
   duration: number
   timezone: string
   votingDeadlineDays: number
+  advancedModeEnabled?: boolean
   timeSlots: string[]
 }
 
@@ -38,14 +39,15 @@ const getRequesterIp = async () => {
 
 const generateAdminToken = () => randomBytes(32).toString("hex")
 
-const isMissingColumnError = (error: DatabaseErrorLike | null) => {
+const isMissingAdvancedModeColumnError = (error: DatabaseErrorLike | null) => {
   if (!error) return false
   const message = error.message?.toLowerCase() ?? ""
   return (
-    error.code === "42703" ||
-    error.code === "PGRST204" ||
-    (message.includes("column") && message.includes("does not exist")) ||
-    (message.includes("schema cache") && message.includes("column"))
+    message.includes("advanced_mode_enabled") &&
+    (error.code === "42703" ||
+      error.code === "PGRST204" ||
+      (message.includes("column") && message.includes("does not exist")) ||
+      (message.includes("schema cache") && message.includes("column")))
   )
 }
 
@@ -79,6 +81,7 @@ export async function createEvent(input: CreateEventInput) {
     duration: input.duration,
     timezone: input.timezone,
     voting_deadline_days: input.votingDeadlineDays,
+    advanced_mode_enabled: input.advancedModeEnabled ?? false,
     voting_deadline: votingDeadline.toISOString(),
     deletion_time: deletionTime.toISOString(),
     admin_id: generateAdminToken(),
@@ -91,13 +94,9 @@ export async function createEvent(input: CreateEventInput) {
     .select()
     .single()
 
-  // Backward compatibility for environments where new columns are not migrated yet.
-  // Also retry on unexpected select/insert errors to avoid hard-failing creation during schema drift.
-  if (eventError) {
-    if (!isMissingColumnError(eventError)) {
-      console.warn("Primary event insert failed, retrying with legacy payload:", eventError)
-    }
-    const { voting_deadline: _votingDeadline, deletion_time: _deletionTime, ...legacyPayload } = eventInsertPayload
+  // Backward compatibility for databases that have countdown columns but not Advanced Mode yet.
+  if (isMissingAdvancedModeColumnError(eventError)) {
+    const { advanced_mode_enabled: _advancedModeEnabled, ...legacyPayload } = eventInsertPayload
     const fallbackResult = await supabase.from("events").insert(legacyPayload).select().single()
     event = fallbackResult.data
     eventError = fallbackResult.error
