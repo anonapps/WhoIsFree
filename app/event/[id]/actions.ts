@@ -1,6 +1,7 @@
 "use server"
 
 import { headers } from "next/headers"
+import { randomUUID } from "crypto"
 import { purgeExpiredEvents } from "@/lib/events/maintenance"
 import { incrementTotalParticipants } from "@/lib/events/stats"
 import { checkRateLimit } from "@/lib/security/rate-limit"
@@ -64,8 +65,6 @@ export async function submitVotes(input: SubmitVotesInput) {
     .eq("id", input.eventId)
     .single()
 
-  // Backward compatibility for environments where new columns are not migrated yet.
-  // Also retry on generic query errors to avoid blocking submissions during schema drift.
   if (eventError) {
     if (!isMissingColumnError(eventError)) {
       console.warn("Primary event lookup failed, retrying with legacy select:", eventError)
@@ -93,7 +92,6 @@ export async function submitVotes(input: SubmitVotesInput) {
   const deletionTime = event.deletion_time ?? event.expires_at
 
   if (deletionTime && new Date(deletionTime).getTime() <= Date.now()) {
-    await supabase.from("events").delete().eq("id", input.eventId)
     return { error: "This event is no longer available." }
   }
 
@@ -101,23 +99,23 @@ export async function submitVotes(input: SubmitVotesInput) {
     return { error: "Voting is closed for this event." }
   }
 
-  const { data: participant, error: participantError } = await supabase
+  const participantId = randomUUID()
+  const { error: participantError } = await supabase
     .from("participants")
     .insert({
+      id: participantId,
       event_id: input.eventId,
       name: input.name,
     })
-    .select()
-    .single()
 
-  if (participantError || !participant) {
+  if (participantError) {
     console.error("Error creating participant:", participantError)
     return { error: "Failed to submit response" }
   }
 
   if (input.votes.length > 0) {
     const responses = input.votes.map((vote) => ({
-      participant_id: participant.id,
+      participant_id: participantId,
       time_slot_id: vote.slotId,
       vote_type: vote.voteType,
     }))
@@ -126,7 +124,6 @@ export async function submitVotes(input: SubmitVotesInput) {
 
     if (responsesError) {
       console.error("Error creating responses:", responsesError)
-      await supabase.from("participants").delete().eq("id", participant.id)
       return { error: "Failed to submit votes" }
     }
   }
@@ -134,7 +131,7 @@ export async function submitVotes(input: SubmitVotesInput) {
   const statsIncremented = await incrementTotalParticipants()
 
   if (!statsIncremented) {
-    await supabase.from("participants").delete().eq("id", participant.id)
+    console.error("Participant was stored but aggregate statistics could not be incremented")
     return { error: "Failed to submit response" }
   }
 

@@ -94,7 +94,6 @@ export async function createEvent(input: CreateEventInput) {
     .select()
     .single()
 
-  // Backward compatibility for databases that have countdown columns but not Advanced Mode yet.
   if (isMissingAdvancedModeColumnError(eventError)) {
     const { advanced_mode_enabled: _advancedModeEnabled, ...legacyPayload } = eventInsertPayload
     const fallbackResult = await supabase.from("events").insert(legacyPayload).select().single()
@@ -116,14 +115,20 @@ export async function createEvent(input: CreateEventInput) {
 
   if (slotsError) {
     console.error("Error creating time slots:", slotsError)
-    await supabase.from("events").delete().eq("id", event.id)
+    await supabase.rpc("delete_whoisfree_event", {
+      p_event_id: event.id,
+      p_admin_key: event.admin_id,
+    })
     return { error: "Failed to create time slots" }
   }
 
   const statsIncremented = await incrementTotalEvents()
 
   if (!statsIncremented) {
-    await supabase.from("events").delete().eq("id", event.id)
+    await supabase.rpc("delete_whoisfree_event", {
+      p_event_id: event.id,
+      p_admin_key: event.admin_id,
+    })
     return { error: "Failed to create event" }
   }
 
