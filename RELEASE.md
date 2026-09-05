@@ -1,32 +1,33 @@
-# Production Release 1.0.0 (Final Planned Release)
+# WhoIsFree — Production Release Notes
 
-This repository is now prepared to ship the latest security and privacy changes as the **final planned release**.
+This repository is the production source for WhoIsFree.
 
-## Included in this release
+## Current production characteristics
 
-- ANONYMITY FAQ page and global footer link to improve transparency.
-- Stronger admin access tokens (`32-byte` cryptographic hex token).
-- Server-side rate limiting for event creation and vote submission.
-- Expired-event purge support via SQL function and optional cron scheduling.
+- Anonymous meeting creation; no account required.
+- Cryptographically generated admin tokens.
+- Anonymous participant voting with server-side validation.
+- Advanced Mode for organiser-visible participant-level submissions.
+- Expired-event cleanup.
+- Application-level rate limiting for event creation and vote submission.
+- PostgreSQL RLS and constrained RPC access.
+- Privileged database implementations kept in the private schema.
 
-## Production rollout checklist
+## Validation before deployment
 
-1. Apply SQL scripts in order:
-   - `scripts/001_create_tables.sql` (new environments)
-   - `scripts/002_add_maintenance_and_admin_token_updates.sql` (existing environments)
-2. Set production Supabase and Next.js environment variables.
-3. Build and deploy the app:
-   - `npm run build`
-   - `npm run start` (or your hosting platform deploy command)
-4. Verify:
-   - `/anonymity-faq` loads
-   - event creation works
-   - participant vote submission works
-   - admin link opens with token key
+```bash
+npm run lint
+npm run typecheck
+npm run build
+```
 
-## Notes
+## Operational notes
 
-- If `pg_cron` is unavailable, expired events are still purged opportunistically by server actions before write operations.
+- Production database migrations are tracked in Supabase.
+- The application intentionally uses a lightweight Vercel + Supabase architecture.
+- Do not commit Supabase service-role keys or other secrets.
+- Security and performance advisors should be reviewed after material database changes.
 
+## E2E validation
 
-Release marker: Final release commit prepared on main for deployment trigger.
+The core create-event → participant → vote → admin-result flow has been validated against the production Supabase schema using ten isolated test scenarios. Test data was rolled back after validation.
