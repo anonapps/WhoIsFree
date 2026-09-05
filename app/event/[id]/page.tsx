@@ -13,11 +13,10 @@ export default async function EventPage({ params }: EventPageProps) {
   const requestHeaders = await headers()
   const visitorTimezone = requestHeaders.get("x-vercel-ip-timezone")
 
-  // Fetch event data
   const { data: event, error: eventError } = await supabase
-    .from('events')
-    .select('*')
-    .eq('id', id)
+    .from("events")
+    .select("*")
+    .eq("id", id)
     .single()
 
   if (eventError || !event) {
@@ -27,31 +26,31 @@ export default async function EventPage({ params }: EventPageProps) {
   const now = Date.now()
   const deletionTime = event.deletion_time ?? event.expires_at
 
-  // Hard-delete and redirect when deletion window is reached
   if (deletionTime && new Date(deletionTime).getTime() <= now) {
-    await supabase.from("events").delete().eq("id", id)
     redirect("/")
   }
 
-  // Fetch time slots
   const { data: timeSlots } = await supabase
-    .from('time_slots')
-    .select('*')
-    .eq('event_id', id)
-    .eq('is_disabled', false)
-    .order('start_time', { ascending: true })
+    .from("time_slots")
+    .select("*")
+    .eq("event_id", id)
+    .eq("is_disabled", false)
+    .order("start_time", { ascending: true })
 
-  // Fetch existing participants count
-  const { count: participantCount } = await supabase
-    .from('participants')
-    .select('*', { count: 'exact', head: true })
-    .eq('event_id', id)
+  const { data: participantCount, error: participantCountError } = await supabase.rpc(
+    "get_whoisfree_participant_count",
+    { p_event_id: id },
+  )
+
+  if (participantCountError) {
+    console.error("Failed to fetch participant count:", participantCountError)
+  }
 
   return (
     <ParticipantView
       event={event}
       timeSlots={timeSlots || []}
-      participantCount={participantCount || 0}
+      participantCount={Number(participantCount ?? 0)}
       initialTimezone={visitorTimezone}
     />
   )
