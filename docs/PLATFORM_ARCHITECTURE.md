@@ -39,6 +39,10 @@ Every new application's tables must have RLS enabled before production use, with
 
 Shared authenticated data must be protected by RLS and must not be exposed to the `anon` role unless a product explicitly requires it.
 
+For anonymous applications, prefer validated database functions for multi-step writes. Direct Data API INSERT/UPDATE/DELETE grants should be removed when the operation can be performed atomically through an RPC.
+
+WhoIsFree specifically exposes only active event/slot reads plus narrowly scoped RPCs for event creation, vote submission, participant counts, and admin-key-protected administration. Participant names and individual responses are not directly readable through the Data API.
+
 ## New application checklist
 
 1. Create a GitHub repository.
@@ -47,9 +51,10 @@ Shared authenticated data must be protected by RLS and must not be exposed to th
 4. Add the schema to the PostgREST exposed schemas only when direct API access is required.
 5. Create application tables and indexes in that schema.
 6. Enable RLS and create explicit policies before production access.
-7. Use the shared Supabase Auth identity when authentication is required.
-8. Use `shared.user_profiles` for common user profile data rather than creating an application-specific user table.
-9. Keep application-specific data out of `public`.
-10. Add migrations to the repository.
-11. Configure the application's Vercel environment variables to use the shared Supabase project.
-12. Verify build, database access, authentication (when applicable), and production deployment before removing compatibility objects.
+7. Prefer atomic, validated RPCs for multi-step anonymous writes.
+8. Use the shared Supabase Auth identity when authentication is required.
+9. Use `shared.user_profiles` for common user profile data rather than creating an application-specific user table.
+10. Keep application-specific data out of `public`.
+11. Add migrations to the repository.
+12. Configure the application's Vercel environment variables to use the shared Supabase project.
+13. Verify build, database access, authentication (when applicable), and production deployment before removing compatibility objects.
