@@ -60,26 +60,30 @@ CREATE POLICY public_can_submit_participants
     )
   );
 
+CREATE OR REPLACE FUNCTION public.can_submit_whoisfree_response(p_participant_id UUID, p_time_slot_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM whoisfree.participants p
+    JOIN whoisfree.events e ON e.id = p.event_id
+    JOIN whoisfree.time_slots ts ON ts.event_id = e.id
+    WHERE p.id = p_participant_id
+      AND ts.id = p_time_slot_id
+      AND e.is_closed = FALSE
+      AND (e.deletion_time IS NULL OR e.deletion_time > NOW())
+      AND (e.voting_deadline IS NULL OR e.voting_deadline > NOW())
+      AND ts.is_disabled = FALSE
+  );
+$$;
+
 DROP POLICY IF EXISTS public_can_submit_responses ON whoisfree.responses;
 CREATE POLICY public_can_submit_responses
   ON whoisfree.responses FOR INSERT TO anon, authenticated
-  WITH CHECK (
-    EXISTS (
-      SELECT 1
-      FROM whoisfree.participants p
-      JOIN whoisfree.events e ON e.id = p.event_id
-      JOIN whoisfree.time_slots ts ON ts.event_id = e.id
-      WHERE p.id = responses.participant_id
-        AND ts.id = responses.time_slot_id
-        AND e.is_closed = FALSE
-        AND (e.deletion_time IS NULL OR e.deletion_time > NOW())
-        AND (e.voting_deadline IS NULL OR e.voting_deadline > NOW())
-        AND ts.is_disabled = FALSE
-    )
-  );
-
--- No direct participant/response SELECT/UPDATE/DELETE policies are created.
--- The admin dashboard uses the protected RPC below.
+  WITH CHECK ((SELECT public.can_submit_whoisfree_response(participant_id, time_slot_id)));
 
 DROP POLICY IF EXISTS public_can_read_global_stats ON whoisfree.global_stats;
 CREATE POLICY public_can_read_global_stats
@@ -87,7 +91,10 @@ CREATE POLICY public_can_read_global_stats
   USING (id = 1);
 
 CREATE OR REPLACE FUNCTION public.get_whoisfree_participant_count(p_event_id UUID)
-RETURNS BIGINT LANGUAGE sql SECURITY DEFINER SET search_path = ''
+RETURNS BIGINT
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = ''
 AS $$
   SELECT count(*)
   FROM whoisfree.participants p
@@ -97,7 +104,10 @@ AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION public.get_whoisfree_admin_data(p_event_id UUID, p_admin_key TEXT)
-RETURNS JSONB LANGUAGE sql SECURITY DEFINER SET search_path = ''
+RETURNS JSONB
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = ''
 AS $$
   SELECT CASE
     WHEN e.id IS NULL THEN NULL::jsonb
@@ -120,7 +130,10 @@ AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION public.delete_whoisfree_event(p_event_id UUID, p_admin_key TEXT)
-RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
 AS $$
 BEGIN
   DELETE FROM whoisfree.events
@@ -129,18 +142,29 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.can_submit_whoisfree_response(UUID, UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.get_whoisfree_participant_count(UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.get_whoisfree_admin_data(UUID, TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.delete_whoisfree_event(UUID, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.can_submit_whoisfree_response(UUID, UUID) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_whoisfree_participant_count(UUID) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_whoisfree_admin_data(UUID, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.delete_whoisfree_event(UUID, TEXT) TO anon, authenticated;
 
--- Existing aggregate SECURITY DEFINER functions use schema-qualified tables and
--- a pinned empty search_path to prevent search_path hijacking.
 ALTER FUNCTION public.increment_total_events() SET search_path = '';
 ALTER FUNCTION public.increment_total_participants() SET search_path = '';
 REVOKE ALL ON FUNCTION public.increment_total_events() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.increment_total_participants() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.increment_total_events() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.increment_total_participants() TO anon, authenticated;
+
+REVOKE ALL ON whoisfree.events FROM anon, authenticated;
+REVOKE ALL ON whoisfree.time_slots FROM anon, authenticated;
+REVOKE ALL ON whoisfree.participants FROM anon, authenticated;
+REVOKE ALL ON whoisfree.responses FROM anon, authenticated;
+REVOKE ALL ON whoisfree.global_stats FROM anon, authenticated;
+GRANT SELECT, INSERT ON whoisfree.events TO anon, authenticated;
+GRANT SELECT, INSERT ON whoisfree.time_slots TO anon, authenticated;
+GRANT INSERT ON whoisfree.participants TO anon, authenticated;
+GRANT INSERT ON whoisfree.responses TO anon, authenticated;
+GRANT SELECT ON whoisfree.global_stats TO anon, authenticated;
