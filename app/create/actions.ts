@@ -3,7 +3,6 @@
 import { headers } from "next/headers"
 import { randomBytes } from "crypto"
 import { purgeExpiredEvents } from "@/lib/events/maintenance"
-import { incrementTotalEvents } from "@/lib/events/stats"
 import { checkRateLimit } from "@/lib/security/rate-limit"
 import { createClient } from "@/lib/supabase/server"
 
@@ -16,11 +15,6 @@ interface CreateEventInput {
   votingDeadlineDays: number
   advancedModeEnabled?: boolean
   timeSlots: string[]
-}
-
-type DatabaseErrorLike = {
-  code?: string
-  message?: string
 }
 
 const CREATE_EVENT_LIMIT = 10
@@ -39,18 +33,6 @@ const getRequesterIp = async () => {
 
 const generateAdminToken = () => randomBytes(32).toString("hex")
 
-const isMissingAdvancedModeColumnError = (error: DatabaseErrorLike | null) => {
-  if (!error) return false
-  const message = error.message?.toLowerCase() ?? ""
-  return (
-    message.includes("advanced_mode_enabled") &&
-    (error.code === "42703" ||
-      error.code === "PGRST204" ||
-      (message.includes("column") && message.includes("does not exist")) ||
-      (message.includes("schema cache") && message.includes("column")))
-  )
-}
-
 export async function createEvent(input: CreateEventInput) {
   await purgeExpiredEvents()
 
@@ -66,74 +48,40 @@ export async function createEvent(input: CreateEventInput) {
   }
 
   const supabase = await createClient()
-
   const now = new Date()
   const votingDeadline = new Date(now)
   votingDeadline.setDate(votingDeadline.getDate() + input.votingDeadlineDays)
-
   const deletionTime = new Date(now)
   deletionTime.setDate(deletionTime.getDate() + 14)
+  const adminId = generateAdminToken()
 
-  const eventInsertPayload = {
-    title: input.title,
-    description: input.description,
-    instructions: input.instructions,
-    duration: input.duration,
-    timezone: input.timezone,
-    voting_deadline_days: input.votingDeadlineDays,
-    advanced_mode_enabled: input.advancedModeEnabled ?? false,
-    voting_deadline: votingDeadline.toISOString(),
-    deletion_time: deletionTime.toISOString(),
-    admin_id: generateAdminToken(),
-    expires_at: deletionTime.toISOString(),
-  }
+  const { data, error } = await supabase.rpc("create_whoisfree_event", {
+    p_title: input.title,
+    p_description: input.description,
+    p_instructions: input.instructions,
+    p_duration: input.duration,
+    p_timezone: input.timezone,
+    p_voting_deadline_days: input.votingDeadlineDays,
+    p_advanced_mode_enabled: input.advancedModeEnabled ?? false,
+    p_admin_id: adminId,
+    p_voting_deadline: votingDeadline.toISOString(),
+    p_deletion_time: deletionTime.toISOString(),
+    p_time_slots: input.timeSlots,
+  })
 
-  let { data: event, error: eventError } = await supabase
-    .from("events")
-    .insert(eventInsertPayload)
-    .select()
-    .single()
-
-  if (isMissingAdvancedModeColumnError(eventError)) {
-    const { advanced_mode_enabled: _advancedModeEnabled, ...legacyPayload } = eventInsertPayload
-    const fallbackResult = await supabase.from("events").insert(legacyPayload).select().single()
-    event = fallbackResult.data
-    eventError = fallbackResult.error
-  }
-
-  if (eventError || !event) {
-    console.error("Error creating event:", eventError)
+  if (error || !data) {
+    console.error("Error creating event:", error)
     return { error: "Failed to create event" }
   }
 
-  const timeSlots = input.timeSlots.map((startTime) => ({
-    event_id: event.id,
-    start_time: startTime,
-  }))
-
-  const { error: slotsError } = await supabase.from("time_slots").insert(timeSlots)
-
-  if (slotsError) {
-    console.error("Error creating time slots:", slotsError)
-    await supabase.rpc("delete_whoisfree_event", {
-      p_event_id: event.id,
-      p_admin_key: event.admin_id,
-    })
-    return { error: "Failed to create time slots" }
-  }
-
-  const statsIncremented = await incrementTotalEvents()
-
-  if (!statsIncremented) {
-    await supabase.rpc("delete_whoisfree_event", {
-      p_event_id: event.id,
-      p_admin_key: event.admin_id,
-    })
+  const result = data as { eventId?: string; adminId?: string }
+  if (!result.eventId || !result.adminId) {
+    console.error("Create event RPC returned an invalid result")
     return { error: "Failed to create event" }
   }
 
   return {
-    eventId: event.id,
-    adminId: event.admin_id,
+    eventId: result.eventId,
+    adminId: result.adminId,
   }
 }
