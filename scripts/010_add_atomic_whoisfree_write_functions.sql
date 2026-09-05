@@ -124,8 +124,8 @@ $$;
 
 REVOKE ALL ON FUNCTION public.create_whoisfree_event(TEXT, TEXT, TEXT, INTEGER, TEXT, INTEGER, BOOLEAN, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ[]) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.submit_whoisfree_votes(UUID, TEXT, JSONB) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.create_whoisfree_event(TEXT, TEXT, TEXT, INTEGER, TEXT, INTEGER, BOOLEAN, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ[]) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.submit_whoisfree_votes(UUID, TEXT, JSONB) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.create_whoisfree_event(TEXT, TEXT, TEXT, INTEGER, TEXT, INTEGER, BOOLEAN, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ[]) TO anon;
+GRANT EXECUTE ON FUNCTION public.submit_whoisfree_votes(UUID, TEXT, JSONB) TO anon;
 
 CREATE SCHEMA IF NOT EXISTS private;
 CREATE OR REPLACE FUNCTION private.can_submit_whoisfree_response(p_participant_id UUID, p_time_slot_id UUID)
